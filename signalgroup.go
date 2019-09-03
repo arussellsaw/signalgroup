@@ -2,13 +2,6 @@ package signalgroup
 
 import "sync"
 
-// Signal is a value broadcast to a group
-type Signal struct {
-	Type   string
-	Value  interface{}
-	Params map[string]string
-}
-
 // New creates a Group with the given bufSize
 func New() *Group {
 	g := &Group{
@@ -21,13 +14,13 @@ func New() *Group {
 
 // Group orchestrates broadcasting signals to a group of consumers
 type Group struct {
-	in chan *Signal
+	in chan interface{}
 	mu sync.Mutex
 	cs *Cursor
 }
 
 // Send a signal to the group
-func (g *Group) Send(s *Signal) {
+func (g *Group) Send(v interface{}) {
 	g.mu.Lock()
 	if g.cs.next != nil {
 		panic("signalgroup: trying to send to already populated Cursor")
@@ -44,7 +37,7 @@ func (g *Group) Send(s *Signal) {
 	// point to new cursor
 	g.cs = newCursor
 	// set the signal on that cursor
-	oldCursor.s = s
+	oldCursor.v = v
 	// unblock the waiters
 	close(oldCursor.c)
 	g.mu.Unlock()
@@ -61,13 +54,13 @@ func (g *Group) Cursor() *Cursor {
 // Cursor is used to recieve a signal
 type Cursor struct {
 	c    chan struct{}
-	s    *Signal
+	v    interface{}
 	next *Cursor
 }
 
 // Wait blocks until a signal is recieved
-func (c *Cursor) Wait() (*Cursor, *Signal) {
+func (c *Cursor) Wait() (*Cursor, interface{}) {
 	<-c.c
-	s := c.s
-	return c.next, s
+	v := c.v
+	return c.next, v
 }
