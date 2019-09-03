@@ -1,5 +1,7 @@
 # signalgroup
 
+[![](https://godoc.org/github.com/arussellsaw/signalgroup?status.svg)](http://godoc.org/github.com/arussellsaw/signalgroup)
+
 This library provides a basic tool for broadcasting data to an arbitrary number of goroutines, with minimal blocking on the send side, and deterministic ordering for recievers. Under the hood the library uses a linked list of channels that are closed to unblock when data is ready to be recieved. this allows us to repeatedly add signals to be recieved, even if consumers are slow to unblock and consume.
 
 As a tradeoff there's a slightly inconvenient API, where you are given a new cursor handle after every wait call, here is an example of the group in action:
