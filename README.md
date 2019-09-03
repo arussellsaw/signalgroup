@@ -51,3 +51,6 @@ func TestGroup(t *testing.T) {
 	wg.Wait()
 }
 ```
+
+## codegen
+this lib uses `interface{}` for ease of use, but would be a great candidate for code generation to have typed signalgroups, i might work on this if i get bored but i welcome contributors.
