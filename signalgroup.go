@@ -43,6 +43,37 @@ func (g *Group) Send(v interface{}) {
 	g.mu.Unlock()
 }
 
+// BlockingSend sends a signal to the group, waiting for n consumers to consume it before
+// returning
+func (g *Group) BlockingSend(v interface{}, n int) {
+	g.cs.wg.Add(n)
+
+	g.mu.Lock()
+
+	if g.cs.next != nil {
+		panic("signalgroup: trying to send to already populated Cursor")
+	}
+
+	newCursor := &Cursor{
+		c: make(chan struct{}),
+	}
+
+	// give waiters holding the existing cursor a link to the new one
+	g.cs.next = newCursor
+	// take a reference to the old cursor
+	oldCursor := g.cs
+	// point to new cursor
+	g.cs = newCursor
+	// set the signal on that cursor
+	oldCursor.v = v
+	// unblock the waiters
+	close(oldCursor.c)
+
+	g.mu.Unlock()
+
+	oldCursor.wg.Wait()
+}
+
 // Cursor returns the current cursor for the signalgroup
 func (g *Group) Cursor() *Cursor {
 	g.mu.Lock()
@@ -53,6 +84,7 @@ func (g *Group) Cursor() *Cursor {
 
 // Cursor is used to recieve a signal
 type Cursor struct {
+	wg   sync.WaitGroup
 	c    chan struct{}
 	v    interface{}
 	next *Cursor
@@ -63,4 +95,10 @@ func (c *Cursor) Wait() (*Cursor, interface{}) {
 	<-c.c
 	v := c.v
 	return c.next, v
+}
+
+// Done marks a recieve as done, to be used with
+// BlockingSend
+func (c *Cursor) Done() {
+	c.wg.Done()
 }
