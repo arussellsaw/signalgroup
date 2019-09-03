@@ -46,7 +46,7 @@ func TestGroup(t *testing.T) {
 	// send 10 integer signals to the group
 	for i := 1; i <= 10; i++ {
 		t.Logf("sending: %v", i)
-		g.Send(&Signal{Value: i})
+		g.Send(i)
 	}
 	wg.Wait()
 }
