@@ -5,50 +5,40 @@ This library provides a basic tool for broadcasting data to an arbitrary number 
 As a tradeoff there's a slightly inconvenient API, where you are given a new cursor handle after every wait call, here is an example of the group in action:
 
 ```go
-func TestGroup(t *testing.T) {
-	var wg sync.WaitGroup
-	g := New()
+package main
 
-	// start 10 workers consuming signals
+import (
+	"fmt"
+	"sync"
+
+	"github.com/arussellsaw/signalgroup"
+)
+
+func main() {
+	g := signalgroup.New()
+	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		// get the current cursor for the group
-		c := g.Cursor()
-		go func() {
-			defer wg.Done()
-			last := 0
-			for {
-				var s interface{}
-
-				// wait for a signal, updating the cursor when we recieve it
-				c, s = c.Wait()
-				v, ok := s.(int)
-				if !ok {
-					t.Errorf("expected ok, got !ok")
-				}
-
-				t.Logf("got: %v", v)
-
-				// this assertion validates ordering
-				if v != last+1 {
-					t.Errorf("expected %v, got %v", last+1, v)
-				}
-
-				last = v
-
-				if v == 10 {
-					return
-				}
-			}
-		}()
+		go worker(g.Cursor(), &wg)
 	}
-
-	// send 10 integer signals to the group
-	for i := 1; i <= 10; i++ {
-		t.Logf("sending: %v", i)
+	for i := 0; i < 10; i++ {
+		fmt.Println("sending", i)
 		g.Send(i)
 	}
 	wg.Wait()
+}
+
+func worker(c *signalgroup.Cursor, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var s interface{}
+	for {
+		c, s = c.Wait()
+		fmt.Println("got", s)
+		v := s.(int)
+		if v == 9 {
+			return
+		}
+	}
 }
 ```
 
